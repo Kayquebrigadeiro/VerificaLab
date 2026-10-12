@@ -75,7 +75,7 @@ def run_suite(ctx) -> dict:
     out_lock = threading.Lock()
 
     try:
-        proc = subprocess.Popen(   # lista, sem shell=True
+        proc = subprocess.Popen(   # lista, sem invocação de shell
             cmd, cwd=str(cwd), env=env, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             start_new_session=True,   # próprio grupo de sinais

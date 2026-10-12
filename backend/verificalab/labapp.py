@@ -49,6 +49,10 @@ class LabHandler(BaseHTTPRequestHandler):
     server_version = f"VerificaLab-Lab/{LAB_VERSION}"
     protocol_version = "HTTP/1.1"
 
+    def setup(self) -> None:
+        super().setup()
+        print(f"[lab] TCP {self.client_address[0]}", flush=True)
+
     def log_message(self, fmt: str, *args) -> None:  # sem query string no log
         path = urlsplit(self.path).path
         print(f"[lab] {self.command} {path}", flush=True)
@@ -64,7 +68,10 @@ class LabHandler(BaseHTTPRequestHandler):
             self.send_header(k, v)
         self.end_headers()
         if self.command != "HEAD":
-            self.wfile.write(body)
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                self.close_connection = True
 
     def _json(self, status: int, obj: dict, extra: dict | None = None) -> None:
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")

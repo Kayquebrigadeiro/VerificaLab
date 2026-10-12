@@ -13,6 +13,8 @@ dependencies = [
   "fastapi>=0.115,<1",
   "httpx>=0.27,<1",
   "pydantic>=2.9,<3",
+  "PyYAML>=6,<7",
+  "textual>=0.80,<2",
   "uvicorn>=0.30,<1",
 ]
 
@@ -28,4 +30,3 @@ package-dir = {"" = "backend"}
 [tool.setuptools.packages.find]
 where = ["backend"]
 include = ["verificalab*"]
-
