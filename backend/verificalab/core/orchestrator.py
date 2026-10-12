@@ -134,7 +134,14 @@ class Orchestrator:
         self.registry = registry or ToolRegistry.load()
         self.db = db or get_db()
 
-    def plan(self, target: str, tools: list[str]) -> Plan:
+    def plan(
+        self,
+        target: str,
+        tools: list[str],
+        *,
+        duration_s: int | None = None,
+        threads: int | None = None,
+    ) -> Plan:
         if not isinstance(target, str) or not target.strip():
             raise ValueError("target deve ser uma string não vazia")
         _parse_target(target)
@@ -150,16 +157,34 @@ class Orchestrator:
             tool = self.registry.get(tool_id)
             if tool is None:
                 raise ValueError(f"ferramenta não registrada: {tool_id}")
-            entries.append(self._plan_entry(tool))
+            entries.append(self._plan_entry(
+                tool,
+                duration_s=duration_s,
+                threads=threads,
+            ))
         return Plan(target=target.strip(), tools=tuple(entries))
 
     @staticmethod
-    def _plan_entry(tool: Tool) -> PlanEntry:
+    def _plan_entry(
+        tool: Tool,
+        *,
+        duration_s: int | None = None,
+        threads: int | None = None,
+    ) -> PlanEntry:
+        duration = duration_s if duration_s is not None else tool.default_limits.duration_s
+        thread_count = threads if threads is not None else tool.default_limits.threads
+        limits = tool.max_limits
+        max_duration = limits.duration_s if limits else tool.default_limits.duration_s
+        max_threads = limits.threads if limits else tool.default_limits.threads
+        if type(duration) is not int or not 1 <= duration <= max_duration:
+            raise ValueError(f"duration_s deve estar entre 1 e {max_duration}")
+        if type(thread_count) is not int or not 1 <= thread_count <= max_threads:
+            raise ValueError(f"threads deve estar entre 1 e {max_threads}")
         return PlanEntry(
             tool_id=tool.id,
             tool_name=tool.name,
-            duration_s=tool.default_limits.duration_s,
-            threads=tool.default_limits.threads,
+            duration_s=duration,
+            threads=thread_count,
         )
 
     def _authorize(self, plan: Plan, auth: Authorization | None) -> Authorization:
@@ -335,7 +360,11 @@ class Orchestrator:
             registered = self.registry.get(entry.tool_id)
             if registered is None:
                 raise ValueError(f"ferramenta não registrada: {entry.tool_id}")
-            if entry != self._plan_entry(registered):
+            if not isinstance(entry, PlanEntry) or entry != self._plan_entry(
+                registered,
+                duration_s=entry.duration_s,
+                threads=entry.threads,
+            ):
                 raise ValueError(f"entrada do plano foi alterada: {entry.tool_id}")
 
         orchestration_id = new_id("stress")

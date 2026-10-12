@@ -51,6 +51,14 @@ O frontend de desenvolvimento fica em `http://127.0.0.1:5173` e encaminha `/api`
 
 Estados terminais: `passed`, `failed`, `cancelled`, `timed_out`, `interrupted` e `error`. `failed` significa que a observação não atendeu ao teste; `error` significa que o executor não conseguiu concluir.
 
+## Stress test autorizado
+
+O catálogo de ferramentas de stress é declarativo (`backend/config/tools.yaml`) e passa por validação antes de ser disponibilizado. A execução controlada pelo VerificaLab aceita somente loopback explícito e respeita os limites de duração e threads do catálogo. O orchestrator exige autorização antes de iniciar adapters, executa subprocessos sem shell e salva logs e relatórios JSON/Markdown/HTML em `data/`.
+
+A TUI permite execução real somente do adapter Slowloris revisado, contra a porta loopback do laboratório descartável; as demais ferramentas permanecem indisponíveis para execução pela interface. O E2E do backend exercita o caminho integrado do orchestrator, autorização, Slowloris real, laboratório HTTP, artefato, relatórios e encerramento de processos.
+
+**Aviso legal:** execute testes de stress somente em sistemas próprios ou com autorização expressa e dentro do escopo aprovado. O modo do VerificaLab descrito aqui destina-se ao laboratório local em loopback; não use as ferramentas contra terceiros, redes públicas ou serviços sem autorização. A autorização técnica não substitui obrigações legais nem autorização do proprietário.
+
 ## Dados, segredos e retenção
 
 Por padrão, o banco, artefatos e segredos ficam em `data/`, com diretórios privados. Valores secretos de ambientes são cifrados e redigidos de logs, API e exportações. Os dados permanecem até remoção manual; nada é enviado para fora da máquina pela plataforma.
@@ -80,4 +88,4 @@ Os testes cobrem limites da API, CSRF/Host/Origin, política de destino, redirec
 - Métricas coletadas no cliente não representam recursos internos do servidor.
 
 Detalhes da homologação estão em [docs/HOMOLOGACAO.md](docs/HOMOLOGACAO.md).
-
+O fluxo e as restrições dos adapters estão descritos em [docs/STRESS_ORCHESTRATION.md](docs/STRESS_ORCHESTRATION.md).

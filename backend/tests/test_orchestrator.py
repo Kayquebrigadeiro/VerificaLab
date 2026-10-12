@@ -64,6 +64,28 @@ def test_plan_with_one_registered_tool_has_one_entry(harness):
     assert plan.tools[0].tool_id == "slowloris"
 
 
+def test_plan_accepts_overrides_within_catalog_limits(harness):
+    app, _, _ = harness
+    plan = app.plan("127.0.0.1:8477", ["slowloris"], duration_s=3, threads=10)
+    assert plan.tools[0].duration_s == 3
+    assert plan.tools[0].threads == 10
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"duration_s": 31}, "duration_s"),
+        ({"threads": 51}, "threads"),
+        ({"duration_s": True}, "duration_s"),
+        ({"threads": 0}, "threads"),
+    ],
+)
+def test_plan_rejects_overrides_outside_catalog_limits(harness, overrides, message):
+    app, _, _ = harness
+    with pytest.raises(ValueError, match=message):
+        app.plan("127.0.0.1:8477", ["slowloris"], **overrides)
+
+
 def test_plan_with_three_registered_tools_has_three_entries(harness):
     app, _, _ = harness
     plan = app.plan("127.0.0.1:8477", ["slowloris", "impulse", "ddoslayer"])

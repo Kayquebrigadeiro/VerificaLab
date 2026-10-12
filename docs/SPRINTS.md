@@ -2,15 +2,15 @@
 
 | Sprint | Escopo | Status | Evidência |
 |---|---|---|---|
-| 0 | Preparar branch, estrutura inicial e tracker sem alterar o catálogo existente | Concluído | `python -m pytest tests -q -o addopts=''`: `87 passed in 23.79s`; `git diff --exit-code -- backend/verificalab/catalog.py`: sem diferenças |
-| 1 | Definir autorização explícita dos alvos | Concluído | 19 testes específicos e 106 testes globais passaram; execução manual libera loopback e rejeita alvo externo sem arquivo de autorização (evidências detalhadas abaixo) |
-| 2 | Catalogar as ferramentas em `backend/config/tools.yaml` e carregar o registro tipado | Concluído | 8 ferramentas carregadas; 25 testes do registry e 131 testes globais passaram |
-| 3 | Implementar runner seguro de subprocessos com encerramento em árvore | Concluído | 12 testes específicos passaram; timeout manual matou o grupo; grep sem ocorrências; suíte global passou |
-| 4 | Adapter real Slowloris e teste E2E no laboratório local | Concluído | 9 testes do adapter, execução real em `127.0.0.1:8477` com `returncode=0` e suíte global com 152 testes |
-| 5 | TUI Textual: catálogo, descrições e execução no laboratório local | Concluído | 9 testes TUI, captura manual com 8 ferramentas e suíte global com 161 testes |
-| 6 | Adapters restantes (7 ferramentas) | Concluído com bloqueios explícitos | 65 testes de adapters passaram; 8 adapters instanciados; suíte global passou (evidências abaixo) |
-| 7 | Orchestrator, persistência SQLite e relatórios JSON/Markdown/HTML | Concluído | 23 testes focados; execução real Slowloris no lab local; suíte global: 249 passed, 3 skipped (evidências abaixo) |
-| 8 | Validar documentação e execução integrada | Não iniciado | — |
+| 0 | Preparar branch, estrutura inicial e tracker sem alterar o catálogo existente | DONE | `python -m pytest tests -q -o addopts=''`: `87 passed in 23.79s`; `git diff --exit-code -- backend/verificalab/catalog.py`: sem diferenças |
+| 1 | Definir autorização explícita dos alvos | DONE | 19 testes específicos e 106 testes globais passaram; execução manual libera loopback e rejeita alvo externo sem arquivo de autorização (evidências detalhadas abaixo) |
+| 2 | Catalogar as ferramentas em `backend/config/tools.yaml` e carregar o registro tipado | DONE | 8 ferramentas carregadas; 25 testes do registry e 131 testes globais passaram |
+| 3 | Implementar runner seguro de subprocessos com encerramento em árvore | DONE | 12 testes específicos passaram; timeout manual matou o grupo; grep sem ocorrências; suíte global passou |
+| 4 | Adapter real Slowloris e teste E2E no laboratório local | DONE | 9 testes do adapter, execução real em `127.0.0.1:8477` com `returncode=0` e suíte global com 152 testes |
+| 5 | TUI Textual: catálogo, descrições e execução no laboratório local | DONE | 9 testes TUI, captura manual com 8 ferramentas e suíte global com 161 testes |
+| 6 | Adapters restantes (7 ferramentas) | DONE | 65 testes de adapters passaram; 8 adapters instanciados; suíte global passou (evidências abaixo) |
+| 7 | Orchestrator, persistência SQLite e relatórios JSON/Markdown/HTML | DONE | 23 testes focados; execução real Slowloris no lab local; suíte global: 249 passed, 3 skipped (evidências abaixo) |
+| 8 | Integração E2E e documentação | EM ANDAMENTO | Teste real e documentação escritos; aguardando suíte global, build frontend, lint, commit e evidências finais |
 
 ## Evidências do Sprint 1
 
@@ -503,3 +503,68 @@ tests/test_api_data.py::test_log_upload_parse_and_correlation
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 249 passed, 3 skipped, 1 warning in 36.52s
 ```
+
+## Evidências do Sprint 8 — Integração E2E + documentação
+
+O teste único `test_e2e_full_flow()` inicia um servidor HTTP real em loopback e
+porta efêmera, confirma `/ok`, autoriza o alvo local e rejeita `example.com`.
+Executa o Slowloris real por 3 segundos/10 threads, verifica no SQLite a
+configuração enviada, confirma as 10 sockets no artefato, valida os três
+relatórios e checa encerramento de processos. O teste usa o diretório isolado
+da suíte. Também foi feita uma rodada real independente com o diretório de
+dados normal da aplicação:
+
+```text
+run_id=stress_1a131689d8a531ca62e5bb3a014
+target=127.0.0.1:46461
+connections=11
+artifact=data/artifacts/stress_1a131689d8a531ca62e5bb3a014/slowloris.log
+json=data/exports/stress_1a131689d8a531ca62e5bb3a014.json
+markdown=data/exports/stress_1a131689d8a531ca62e5bb3a014.md
+html=data/exports/stress_1a131689d8a531ca62e5bb3a014.html
+```
+
+Teste E2E dedicado:
+
+```text
+$ cd backend && python -m pytest tests/test_e2e_stress.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, typeguard-4.4.4
+collected 1 item
+
+tests/test_e2e_stress.py .                                               [100%]
+
+============================== 1 passed in 5.37s ===============================
+```
+
+Contagem de processos antes da execução: `0`. Verificação imediatamente
+depois: `0`; nova contagem após 2 segundos: `0`. O teste também exige zero
+antes/depois internamente em caso de falha no fluxo.
+
+Suíte global executada com o Python do ambiente virtual do projeto:
+
+```text
+$ cd backend && PATH=/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/bin:$PATH python -m pytest tests -q -o addopts=''
+......................................................................ss [ 27%]
+s....................................................................... [ 55%]
+........................................................................ [ 83%]
+..........................................                               [100%]
+=============================== warnings summary ===============================
+tests/test_api_data.py::test_log_upload_parse_and_correlation
+  /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+255 passed, 3 skipped, 1 warning in 43.07s
+```
+
+Build frontend: `✓ built in 1.24s`. Busca
+`grep -rn "shell=True" backend/verificalab/`: nenhuma correspondência
+(grep retornou 1, como esperado). O histórico contém commits dos Sprints 1–7;
+Chromium headless abriu o relatório exportado e confirmou ferramenta, alvo e
+duração com exit code 0. O commit de implementação e status final serão
+registrados na tabela acima
+após o fechamento do sprint.

@@ -15,6 +15,30 @@ Data da rodada: 11 de outubro de 2026.
 | Segurança local | Host, Origin, CSRF, path traversal, XSS/sanitização e redação | aprovado por testes automatizados |
 | Browser real | Chromium headless, viewports 1440×1000 e 390×844, API e assets reais | aprovado |
 
+## Rodada Sprint 8 — 12 de outubro de 2026
+
+| Área | Evidência | Estado |
+| --- | --- | --- |
+| Fluxo E2E de stress | `tests/test_e2e_stress.py`: servidor HTTP real em loopback/porta efêmera, autorização local, Slowloris por 3 s/10 threads, artefato e três formatos de relatório | aprovado |
+| Autorização | `127.0.0.1:<porta>` liberado; `example.com` recusado com `AuthorizationError` | aprovado |
+| Tráfego local | O contador de conexões do laboratório aumentou durante a execução real do adapter | aprovado |
+| Relatórios | JSON válido, Markdown com “Slowloris” e HTML parseado com nome da ferramenta, alvo e duração | aprovado |
+| Browser | Chromium headless abriu o HTML gerado e exibiu ferramenta, alvo e duração (exit code 0) | aprovado |
+| Processos | zero antes, zero imediatamente após e zero após espera de 2 s | aprovado |
+| Orchestrator | 19 testes E2E/orchestrator passaram, incluindo sobrescritas dentro e fora dos limites | aprovado |
+| Suíte backend | 255 passed, 3 skipped | aprovado |
+| Frontend | `npm run build`, TypeScript e Vite de produção | aprovado |
+| Busca de shell | `grep -rn "shell=True" backend/verificalab/` sem correspondências | aprovado |
+
+O teste usa o diretório temporário isolado definido por `backend/tests/conftest.py`
+para banco, artefatos e exports, sem alterar os dados preexistentes do usuário.
+Além do teste isolado, uma execução real persistiu no diretório local
+`data/`: `stress_1a131689d8a531ca62e5bb3a014`, alvo loopback em porta efêmera,
+11 conexões vistas pelo laboratório, log `slowloris.log` e exports JSON,
+Markdown e HTML. A suíte global terminou em `255 passed, 3 skipped, 1 warning
+in 43.07s`; a advertência existente é a depreciação do `httpx` no
+`starlette.testclient`.
+
 ## Critérios observados
 
 - Execução que contém falha intencional termina como `failed`.
