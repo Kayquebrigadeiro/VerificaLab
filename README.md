@@ -1,5 +1,7 @@
 # VerificaLab
 
+> Versão atual: **0.2.0** — ver [CHANGELOG](CHANGELOG.md).
+
 Plataforma local para executar testes controlados, preservar evidências e comparar resultados. A versão piloto opera somente contra IPs literais de loopback e não implementa mecanismos de flood, proxy, amplificação, spoofing, conexões incompletas ou tráfego distribuído.
 
 ## Início rápido

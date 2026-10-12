@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "verificalab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Plataforma local de testes controlados e investigação por evidências"
 readme = "README.md"
 requires-python = ">=3.11"
