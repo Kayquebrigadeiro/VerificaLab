@@ -89,3 +89,10 @@ Os testes cobrem limites da API, CSRF/Host/Origin, política de destino, redirec
 
 Detalhes da homologação estão em [docs/HOMOLOGACAO.md](docs/HOMOLOGACAO.md).
 O fluxo e as restrições dos adapters estão descritos em [docs/STRESS_ORCHESTRATION.md](docs/STRESS_ORCHESTRATION.md).
+
+## Documentação
+
+- [docs/PENDENCIAS.md](docs/PENDENCIAS.md) — o que não funciona e por quê.
+- [docs/GUIA_DE_USO.md](docs/GUIA_DE_USO.md) — como usar na prática.
+- [docs/HOMOLOGACAO_FINAL.md](docs/HOMOLOGACAO_FINAL.md) — resultado da homologação.
+- [docs/SPRINTS.md](docs/SPRINTS.md) — histórico de desenvolvimento.
