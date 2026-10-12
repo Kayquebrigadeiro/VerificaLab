@@ -6,7 +6,7 @@
 | 1 | Definir autorização explícita dos alvos | Concluído | 19 testes específicos e 106 testes globais passaram; execução manual libera loopback e rejeita alvo externo sem arquivo de autorização (evidências detalhadas abaixo) |
 | 2 | Catalogar as ferramentas em `backend/config/tools.yaml` e carregar o registro tipado | Concluído | 8 ferramentas carregadas; 25 testes do registry e 131 testes globais passaram |
 | 3 | Implementar runner seguro de subprocessos com encerramento em árvore | Concluído | 12 testes específicos passaram; timeout manual matou o grupo; grep sem ocorrências; suíte global passou |
-| 4 | Orquestrar execuções autorizadas | Não iniciado | — |
+| 4 | Adapter real Slowloris e teste E2E no laboratório local | Concluído | 9 testes do adapter, execução real em `127.0.0.1:8477` com `returncode=0` e suíte global com 152 testes |
 | 5 | Integrar resultados e métricas | Não iniciado | — |
 | 6 | Integrar fluxos de interface TUI | Não iniciado | — |
 | 7 | Cobrir fluxos e limites com testes | Não iniciado | — |
@@ -168,3 +168,75 @@ $ cd backend && python -m pytest tests -q
 ```
 
 O comando global terminou com código 0.
+
+## Evidências do Sprint 4
+
+Implementados `StressRequest`, `StressAdapter` e `StressResult` (alias do
+`RunResult` do runner), além do `SlowlorisAdapter`. Os limites máximos são
+declarados em `tools.yaml` (30 s e 50 sockets), validados pelo registry e
+aplicados sem elevar valores menores. O adapter chama
+`require_authorization()` antes da construção/execução do comando, recusa
+opções upstream fora da allowlist e só permite o caminho `/`, pois o Slowloris
+original não oferece configuração de caminho nem duração. O original permaneceu
+inalterado; um supervisor temporizado encerra o processo ao final da duração,
+com o timeout do runner como limite de segurança adicional.
+
+O lab registra conexões TCP antes de receber cabeçalhos completos e trata
+desconexões do teste como parte normal do ciclo. `backend/tests/fixtures/local_http.py`
+reusa o fixture do laboratório da suíte.
+
+Testes específicos:
+
+```text
+$ cd backend && python -m pytest tests/test_adapter_slowloris.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, typeguard-4.4.4
+collected 9 items
+
+tests/test_adapter_slowloris.py .........                                [100%]
+
+============================== 9 passed in 3.68s ==============================
+```
+
+Execução real contra o laboratório local:
+
+```text
+LAB: {'running': True, 'pid': 217263, 'endpoint': 'http://127.0.0.1:8477', 'managed_by': 'verificalab', 'message': 'lab iniciado'}
+RunResult: RunResult(started_at=datetime.datetime(2026, 10, 12, 17, 38, 20, 392820, tzinfo=datetime.timezone.utc), ended_at=datetime.datetime(2026, 10, 12, 17, 38, 23, 450108, tzinfo=datetime.timezone.utc), returncode=0, stdout='', stderr='[12-10-2026 14:38:20] Attacking 127.0.0.1 with 10 sockets.\n[12-10-2026 14:38:20] Creating sockets...\n[12-10-2026 14:38:21] Sending keep-alive headers...\n[12-10-2026 14:38:21] Socket count: 10\n', timeout=False, cancelled=False, truncated=False)
+LAB_STOP: {'running': False, 'pid': None, 'endpoint': 'http://127.0.0.1:8477', 'managed_by': None, 'message': 'lab encerrado'}
+LAB_LOG_TAIL:
+[lab] TCP 127.0.0.1
+[lab] TCP 127.0.0.1
+[lab] GET /[lab] GET /
+[lab] GET /[lab] GET /
+[lab] GET /
+[lab] GET /
+[lab] GET /
+
+[lab] GET /[lab] GET /
+
+[lab] GET /
+```
+
+Suíte global, comando solicitado:
+
+```text
+$ cd backend && python -m pytest tests -q
+........................................................................ [ 47%]
+........................................................................ [ 94%]
+........                                                                 [100%]
+```
+
+O comando terminou com código 0. Para obter a contagem final sem o `addopts`
+quiet do projeto:
+
+```text
+$ cd backend && python -m pytest tests -q -o addopts=''
+........................................................................ [ 47%]
+........................................................................ [ 94%]
+........                                                                 [100%]
+152 passed in 31.21s
+```

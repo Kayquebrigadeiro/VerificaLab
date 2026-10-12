@@ -62,6 +62,9 @@
     duration_s: 5
     threads: 1
     rate_limit: low
+  max_limits:
+    duration_s: 30
+    threads: 50
 
 - id: mhddos
   name: MHDDoS

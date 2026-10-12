@@ -26,8 +26,11 @@ _TOOL_FIELDS = {
     "example",
     "risks",
     "default_limits",
+    "max_limits",
 }
+_REQUIRED_TOOL_FIELDS = _TOOL_FIELDS - {"max_limits"}
 _LIMIT_FIELDS = {"duration_s", "threads", "rate_limit"}
+_MAX_LIMIT_FIELDS = {"duration_s", "threads"}
 _SLUG_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
 
 
@@ -43,6 +46,12 @@ class DefaultLimits:
 
 
 @dataclass(frozen=True, slots=True)
+class MaxLimits:
+    duration_s: int
+    threads: int
+
+
+@dataclass(frozen=True, slots=True)
 class Tool:
     id: str
     name: str
@@ -55,6 +64,7 @@ class Tool:
     example: str
     risks: tuple[str, ...]
     default_limits: DefaultLimits
+    max_limits: MaxLimits | None
     installed: bool
 
 
@@ -70,7 +80,7 @@ def _parse_tool(data: object, root: Path) -> Tool:
 
     tool_id = _require_text(data.get("id"), "id", "<desconhecida>")
     unknown = set(data) - _TOOL_FIELDS
-    missing = _TOOL_FIELDS - set(data)
+    missing = _REQUIRED_TOOL_FIELDS - set(data)
     if unknown:
         raise ToolRegistryError(f"{tool_id}: campos desconhecidos: {sorted(unknown)}")
     if missing:
@@ -131,6 +141,34 @@ def _parse_tool(data: object, root: Path) -> Tool:
     if rate_limit not in ("low", "medium"):
         raise ToolRegistryError(f"{tool_id}: 'rate_limit' deve ser 'low' ou 'medium'")
 
+    max_limits = None
+    if "max_limits" in data:
+        max_value = data["max_limits"]
+        if not isinstance(max_value, dict):
+            raise ToolRegistryError(f"{tool_id}: 'max_limits' deve ser um objeto")
+        missing_max = _MAX_LIMIT_FIELDS - set(max_value)
+        unknown_max = set(max_value) - _MAX_LIMIT_FIELDS
+        if missing_max or unknown_max:
+            raise ToolRegistryError(
+                f"{tool_id}: campos de max_limits inválidos "
+                f"(ausentes: {sorted(missing_max)}, desconhecidos: {sorted(unknown_max)})"
+            )
+        max_duration = max_value["duration_s"]
+        max_threads = max_value["threads"]
+        if (
+            type(max_duration) is not int
+            or not duration_s <= max_duration <= 30
+        ):
+            raise ToolRegistryError(
+                f"{tool_id}: max_limits.duration_s deve estar entre "
+                f"{duration_s} e 30"
+            )
+        if type(max_threads) is not int or not threads <= max_threads <= 50:
+            raise ToolRegistryError(
+                f"{tool_id}: max_limits.threads deve estar entre {threads} e 50"
+            )
+        max_limits = MaxLimits(max_duration, max_threads)
+
     return Tool(
         id=tool_id,
         name=name,
@@ -147,6 +185,7 @@ def _parse_tool(data: object, root: Path) -> Tool:
             threads=threads,
             rate_limit=rate_limit,
         ),
+        max_limits=max_limits,
         installed=installed,
     )
 
