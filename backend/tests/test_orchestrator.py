@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -11,6 +12,7 @@ from verificalab.core.authorization import AuthorizationError
 from verificalab.core.orchestrator import Orchestrator
 from verificalab.core.runner import RunResult
 from verificalab.db import Database
+from verificalab.worker import Worker
 
 
 class FakeAdapter:
@@ -108,6 +110,30 @@ def test_plan_rejects_duplicate_tool_ids(harness):
     app, _, _ = harness
     with pytest.raises(ValueError, match="duplicados"):
         app.plan("127.0.0.1:8477", ["slowloris", "slowloris"])
+
+
+def test_cancel_delegates_to_worker(harness):
+    _, _, db = harness
+    worker = Mock(spec=Worker)
+    worker.request_cancel.return_value = ("cancelling", "cancelamento solicitado")
+    app = Orchestrator(db=db, worker=worker)
+
+    assert app.cancel("run_123") == ("cancelling", "cancelamento solicitado")
+    worker.request_cancel.assert_called_once_with("run_123")
+
+
+def test_cancel_nonexistent_run_returns_not_found(harness):
+    _, _, db = harness
+    app = Orchestrator(db=db, worker=Worker(db))
+
+    assert app.cancel("run_inexistente") == ("not_found", "execução inexistente")
+
+
+def test_cancel_without_worker_raises(harness):
+    app, _, _ = harness
+
+    with pytest.raises(RuntimeError, match="Orchestrator\\(worker=worker\\)"):
+        app.cancel("run_123")
 
 
 def test_invalid_authorization_aborts_before_adapter_or_database_run(harness):

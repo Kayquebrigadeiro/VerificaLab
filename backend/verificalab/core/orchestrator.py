@@ -19,6 +19,7 @@ from verificalab.ids import new_id, sha256_bytes
 from verificalab.security import redact, sanitize_text
 from verificalab.stress.base import StressRequest
 from verificalab.stress.registry import Tool, ToolRegistry
+from verificalab.worker import Worker
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,9 +131,20 @@ class Orchestrator:
         *,
         registry: ToolRegistry | None = None,
         db: Database | None = None,
+        worker: Worker | None = None,
     ) -> None:
         self.registry = registry or ToolRegistry.load()
         self.db = db or get_db()
+        self.worker = worker
+
+    def cancel(self, run_id: str) -> tuple[str, str]:
+        """Solicita cancelamento pelo Worker que gerencia a execução."""
+        if self.worker is None:
+            raise RuntimeError(
+                "cancel() requer um Worker; instancie Orchestrator(worker=worker) "
+                "com o Worker que gerencia a execução."
+            )
+        return self.worker.request_cancel(run_id)
 
     def plan(
         self,

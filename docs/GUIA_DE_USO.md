@@ -160,6 +160,12 @@ O worker solicita a interrupção da execução ativa ou cancela uma execução
 enfileirada. A execução ativa pode responder primeiro com `cancelling`; ao
 terminar, o estado final é `cancelled`.
 
+Via Python: `o.cancel(run_id)` delega a chamada a `Worker.request_cancel()`.
+Instancie o Orchestrator com a mesma instância de `Worker` que gerencia as
+execuções, por exemplo `o = Orchestrator(worker=worker)`.
+Esse método cancela runs administradas por esse worker; `Orchestrator.run()`
+continua sendo uma execução síncrona separada e não é enfileirada no Worker.
+
 ## 6. Relatórios e artefatos
 
 Após `orchestrator.run(plan)`, os relatórios são gravados em:

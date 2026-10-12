@@ -31,14 +31,11 @@ Fonte: `docs/HOMOLOGACAO_FINAL.md`, parte D; motivos complementares:
 
 ## 2. Lacunas conhecidas (não bloqueantes)
 
-### 2.1 Orchestrator sem cancelamento
+### 2.1 Orchestrator sem cancelamento — RESOLVIDO (Sprint 9)
 
-- **O que é**: `Orchestrator` expõe `plan()` e `run()`, mas não possui
-  `cancel()`.
-- **Impacto**: o cancelamento programático precisa ser feito pela API
-  (`POST /api/runs/{id}/cancel`).
-- **Status**: Sprint 9 planejado.
-- **Workaround**: usar a API em vez do `Orchestrator` para cancelar.
+- **Resolvido em**: 2026-10-12, via `Orchestrator.cancel(run_id)`.
+- **Como funciona**: delega a `Worker.request_cancel()`; instancie o
+  `Orchestrator` com o mesmo worker que gerencia a execução.
 
 ### 2.2 MikuMikuBeam sem importador
 
