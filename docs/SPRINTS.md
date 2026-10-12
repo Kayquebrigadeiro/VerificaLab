@@ -5,7 +5,7 @@
 | 0 | Preparar branch, estrutura inicial e tracker sem alterar o catálogo existente | Concluído | `python -m pytest tests -q -o addopts=''`: `87 passed in 23.79s`; `git diff --exit-code -- backend/verificalab/catalog.py`: sem diferenças |
 | 1 | Definir autorização explícita dos alvos | Concluído | 19 testes específicos e 106 testes globais passaram; execução manual libera loopback e rejeita alvo externo sem arquivo de autorização (evidências detalhadas abaixo) |
 | 2 | Catalogar as ferramentas em `backend/config/tools.yaml` e carregar o registro tipado | Concluído | 8 ferramentas carregadas; 25 testes do registry e 131 testes globais passaram |
-| 3 | Implementar adaptadores das ferramentas de stress test | Não iniciado | — |
+| 3 | Implementar runner seguro de subprocessos com encerramento em árvore | Concluído | 12 testes específicos passaram; timeout manual matou o grupo; grep sem ocorrências; suíte global passou |
 | 4 | Orquestrar execuções autorizadas | Não iniciado | — |
 | 5 | Integrar resultados e métricas | Não iniciado | — |
 | 6 | Integrar fluxos de interface TUI | Não iniciado | — |
@@ -117,3 +117,54 @@ tests/test_api_data.py::test_log_upload_parse_and_correlation
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 131 passed, 1 warning in 24.32s
 ```
+
+## Evidências do Sprint 3
+
+`core.runner.run_subprocess()` exige comando em lista, valida diretório contra
+raízes permitidas, inicia sessão/grupo próprio, usa ambiente mínimo com `PATH`
+explícito, drena stdout/stderr concorrentemente sob limite agregado de 1 MB e
+encerra o grupo em timeout ou cancelamento. `RunResult` inclui horários UTC,
+código de retorno, saídas capturadas e flags de timeout, cancelamento e
+truncamento.
+
+Testes específicos:
+
+```text
+$ cd backend && python -m pytest tests/test_runner.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, typeguard-4.4.4
+collected 12 items
+
+tests/test_runner.py ............                                        [100%]
+
+============================== 12 passed in 2.60s ==============================
+```
+
+Verificação manual de timeout e processo filho:
+
+```text
+$ cd backend && python -c "from verificalab.core.runner import run_subprocess; r=run_subprocess(['bash','-c','sleep 30 & wait'], cwd='.', timeout_s=2); print(r)"
+RunResult(started_at=datetime.datetime(2026, 10, 12, 17, 30, 38, 12375, tzinfo=datetime.timezone.utc), ended_at=datetime.datetime(2026, 10, 12, 17, 30, 40, 18593, tzinfo=datetime.timezone.utc), returncode=-15, stdout='', stderr='', timeout=True, cancelled=False, truncated=False)
+$ ps aux | grep 'sleep 30' | grep -v grep
+(sem saída; nenhum processo encontrado)
+```
+
+Busca por invocação de shell:
+
+```text
+$ grep -rn "shell=True" backend/verificalab/
+(sem saída; grep retornou 1 por não encontrar correspondências)
+```
+
+Suíte global:
+
+```text
+$ cd backend && python -m pytest tests -q
+........................................................................ [ 50%]
+.......................................................................  [100%]
+```
+
+O comando global terminou com código 0.
