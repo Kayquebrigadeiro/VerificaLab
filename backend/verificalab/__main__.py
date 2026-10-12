@@ -1,4 +1,4 @@
-"""CLI do VerificaLab: serve, migrate, lab, demo."""
+"""CLI do VerificaLab: serve, migrate, lab, demo, tui."""
 
 from __future__ import annotations
 
@@ -24,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
     p_lab.add_argument("action", choices=["start", "stop", "status"])
 
     sub.add_parser("demo", help="cria projeto/perfis de demonstração")
+
+    sub.add_parser("tui", help="abre o painel interativo de ferramentas")
 
     args = parser.parse_args(argv)
 
@@ -66,6 +68,12 @@ def main(argv: list[str] | None = None) -> int:
         seed_tools(db)
         summary = seed_demo(db)
         print(summary)
+        return 0
+
+    if args.cmd == "tui":
+        from .tui.app import VerificaLabApp
+
+        VerificaLabApp().run()
         return 0
 
     parser.print_help()

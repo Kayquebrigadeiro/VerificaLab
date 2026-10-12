@@ -7,7 +7,7 @@
 | 2 | Catalogar as ferramentas em `backend/config/tools.yaml` e carregar o registro tipado | Concluído | 8 ferramentas carregadas; 25 testes do registry e 131 testes globais passaram |
 | 3 | Implementar runner seguro de subprocessos com encerramento em árvore | Concluído | 12 testes específicos passaram; timeout manual matou o grupo; grep sem ocorrências; suíte global passou |
 | 4 | Adapter real Slowloris e teste E2E no laboratório local | Concluído | 9 testes do adapter, execução real em `127.0.0.1:8477` com `returncode=0` e suíte global com 152 testes |
-| 5 | Integrar resultados e métricas | Não iniciado | — |
+| 5 | TUI Textual: catálogo, descrições e execução no laboratório local | Concluído | 9 testes TUI, captura manual com 8 ferramentas e suíte global com 161 testes |
 | 6 | Integrar fluxos de interface TUI | Não iniciado | — |
 | 7 | Cobrir fluxos e limites com testes | Não iniciado | — |
 | 8 | Validar documentação e execução integrada | Não iniciado | — |
@@ -239,4 +239,71 @@ $ cd backend && python -m pytest tests -q -o addopts=''
 ........................................................................ [ 94%]
 ........                                                                 [100%]
 152 passed in 31.21s
+```
+
+## Evidências do Sprint 5
+
+Implementado o painel Textual com tabela navegável (ID, nome, camada, root e
+status), descrição lateral atualizada pelo cursor, tela de detalhes (`i`) e
+formulário de execução (`r`). Ferramentas ausentes são marcadas em vermelho.
+A execução na TUI fica restrita ao adapter Slowloris revisado, a loopback e à
+porta configurada para o laboratório local; não há invocação direta dos outros
+executáveis do catálogo. A tela solicita duração e threads e exibe resultado,
+saída e erros.
+
+Testes com `textual.pilot`, sem executar ferramentas reais:
+
+```text
+$ cd backend && python -m pytest tests/test_tui_smoke.py -v
+collected 9 items
+tests/test_tui_smoke.py .........                                        [100%]
+============================== 9 passed in 3.83s ===============================
+```
+
+Execução manual de `python -m verificalab tui` em terminal real: o painel abriu,
+a seta ↓ moveu a seleção para DDoSlayer, o conteúdo lateral mudou e `q` encerrou
+com código 0. Dump do quadro capturado:
+
+```text
+Ferramentas do catálogo
+ID            Nome          Camada  Root?  Status
+mikumikubeam  MikuMikuBeam  L7      Não    ✓ instalado
+ddoslayer     DDoSlayer     L4+L7   Sim    ✓ instalado
+slowloris     Slowloris     L7      Não    ✓ instalado
+mhddos        MHDDoS        L4+L7   Sim    ✓ instalado
+impulse       Impulse       L4+L7   Sim    ✓ instalado
+pyddos        PyDDoS        L4+L7   Sim    ✓ instalado
+overload      Overload      L4+L2   Sim    ✓ instalado
+ufonet        UFONet        L3      Não    ✓ instalado
+
+DDoSlayer (ddoslayer)
+Descrição: Framework interativo com métodos HTTP, conexões lentas e opções
+           de camada de rede que usam pacotes raw. Exige revisão do método
+           escolhido antes de qualquer teste.
+Quando usar: Apenas para testes autorizados e isolados no laboratório local,
+             escolhendo HTTP e mantendo duração e threads nos limites abaixo.
+Exemplo: python3 ddoslayer/DDoSlayer.py
+Riscos: Métodos SYN e UDP podem exigir privilégios elevados e afetar redes.
+        A interface interativa não aplica os limites do VerificaLab.
+Limites padrão: 5s · 1 thread(s) · rate limit low
+```
+
+Suíte global solicitada:
+
+```text
+$ cd backend && python -m pytest tests -q
+........................................................................ [ 44%]
+........................................................................ [ 89%]
+.................                                                        [100%]
+```
+
+O comando terminou com código 0. Para registrar a contagem final, executado
+também sem os `addopts` quiet do projeto:
+
+```text
+$ cd backend && python -m pytest tests -q -o addopts=''
+........................................................................ [ 44%]
+........................................................................ [ 89%]
+.................                                                        [100%]
+161 passed, 1 warning in 33.36s
 ```
