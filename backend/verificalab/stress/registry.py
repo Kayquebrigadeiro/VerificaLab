@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from types import MappingProxyType
-from typing import Iterable, Iterator, Literal, Mapping
+from typing import TYPE_CHECKING, Iterable, Iterator, Literal, Mapping
 
 import yaml
+
+if TYPE_CHECKING:
+    from verificalab.stress.base import StressAdapter
 
 Language = Literal["python", "go"]
 Layer = Literal["L3", "L4", "L7", "L4+L2", "L4+L7"]
@@ -32,6 +36,19 @@ _REQUIRED_TOOL_FIELDS = _TOOL_FIELDS - {"max_limits"}
 _LIMIT_FIELDS = {"duration_s", "threads", "rate_limit"}
 _MAX_LIMIT_FIELDS = {"duration_s", "threads"}
 _SLUG_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+_ADAPTER_TYPES = {
+    "slowloris": ("verificalab.stress.adapters.slowloris", "SlowlorisAdapter"),
+    "ddoslayer": ("verificalab.stress.adapters.ddoslayer", "DDoSlayerAdapter"),
+    "mhddos": ("verificalab.stress.adapters.mhddos", "MHDDOSAdapter"),
+    "impulse": ("verificalab.stress.adapters.impulse", "ImpulseAdapter"),
+    "overload": ("verificalab.stress.adapters.overload", "OverloadAdapter"),
+    "pyddos": ("verificalab.stress.adapters.pyddos", "PyDDoSAdapter"),
+    "ufonet": ("verificalab.stress.adapters.ufonet", "UFONetAdapter"),
+    "mikumikubeam": (
+        "verificalab.stress.adapters.mikumikubeam",
+        "MikuMikuBeamAdapter",
+    ),
+}
 
 
 class ToolRegistryError(ValueError):
@@ -240,6 +257,14 @@ class ToolRegistry:
 
     def get(self, tool_id: str) -> Tool | None:
         return self._tools.get(tool_id)
+
+    def adapter_for(self, tool_id: str) -> StressAdapter:
+        """Instancia o adapter associado à ferramenta registrada."""
+        if tool_id not in self._tools:
+            raise KeyError(tool_id)
+        module_name, type_name = _ADAPTER_TYPES[tool_id]
+        adapter_type = getattr(import_module(module_name), type_name)
+        return adapter_type()
 
     def installed(self) -> tuple[Tool, ...]:
         return tuple(tool for tool in self._tools.values() if tool.installed)
