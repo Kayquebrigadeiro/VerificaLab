@@ -83,6 +83,7 @@ class SlowlorisAdapter(StressAdapter):
 
     def build_cmd(self, req: StressRequest) -> list[str]:
         limited = self.clamp(req)
+        self._local_target_url(limited, allow_extra_args=True)
         host, port = self._target_parts(limited)
         if not isinstance(limited.extra_args, (tuple, list)) or any(
             not isinstance(arg, str) or arg not in _ALLOWED_EXTRA_ARGS

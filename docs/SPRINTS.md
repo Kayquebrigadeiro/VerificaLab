@@ -8,7 +8,7 @@
 | 3 | Implementar runner seguro de subprocessos com encerramento em árvore | Concluído | 12 testes específicos passaram; timeout manual matou o grupo; grep sem ocorrências; suíte global passou |
 | 4 | Adapter real Slowloris e teste E2E no laboratório local | Concluído | 9 testes do adapter, execução real em `127.0.0.1:8477` com `returncode=0` e suíte global com 152 testes |
 | 5 | TUI Textual: catálogo, descrições e execução no laboratório local | Concluído | 9 testes TUI, captura manual com 8 ferramentas e suíte global com 161 testes |
-| 6 | Integrar fluxos de interface TUI | Não iniciado | — |
+| 6 | Adapters restantes (7 ferramentas) | Concluído com bloqueios explícitos | 65 testes de adapters passaram; 8 adapters instanciados; suíte global passou (evidências abaixo) |
 | 7 | Cobrir fluxos e limites com testes | Não iniciado | — |
 | 8 | Validar documentação e execução integrada | Não iniciado | — |
 
@@ -306,4 +306,90 @@ $ cd backend && python -m pytest tests -q -o addopts=''
 ........................................................................ [ 89%]
 .................                                                        [100%]
 161 passed, 1 warning in 33.36s
+```
+
+## Evidências do Sprint 6
+
+Implementados os sete adapters solicitados e `ToolRegistry.adapter_for(id)`;
+os testes de `test_adapters_all.py` também incluem Slowloris. Todos os novos
+adapters aplicam autorização antes de validar/executar, restringem alvos a
+loopback e limitam duração e threads conforme `tools.yaml`. Os testes root
+mockam somente a checagem para confirmar a recusa e garantem que nenhum
+subprocesso é iniciado.
+
+Quatro upstreams falham fechados, sem alterar os originais: DDoSlayer e
+Overload só oferecem interface interativa; PyDDoS não respeita a porta
+solicitada pelo adapter; UFONet permanece somente para análise estática,
+conforme o catálogo. MHDDoS usa GET direto com arquivo local de proxies vazio,
+verificado antes da execução. MikuMikuBeam usa HTTP direto sem proxy, uma
+thread, intervalo de 1 segundo e dependências Go apenas do cache local.
+
+Verificação individual na ordem da sprint:
+
+```text
+$ python -m pytest tests/test_adapters_all.py -k ddoslayer -v
+8 passed
+$ python -m pytest tests/test_adapters_all.py -k mhddos -v
+8 passed
+$ python -m pytest tests/test_adapters_all.py -k impulse -v
+8 passed
+$ python -m pytest tests/test_adapters_all.py -k overload -v
+8 passed
+$ python -m pytest tests/test_adapters_all.py -k pyddos -v
+8 passed
+$ python -m pytest tests/test_adapters_all.py -k ufonet -v
+7 passed, 1 skipped
+$ python -m pytest tests/test_adapters_all.py -k mikumikubeam -v
+8 passed, 1 skipped
+$ python -m pytest tests/test_adapters_all.py -k slowloris -v
+8 passed, 1 skipped
+```
+
+O teste MikuMikuBeam executa o comando Go real contra o fixture HTTP local
+(loopback), sem mock do executor e sem buscar dependências ou proxies externos:
+
+```text
+$ cd backend && /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/bin/python -m pytest tests/test_adapters_all.py -k mikumikubeam -v
+collected 68 items / 59 deselected / 9 selected
+tests/test_adapters_all.py .......s.                                     [100%]
+8 passed, 1 skipped
+```
+
+Saída exigida da suíte de adapters:
+
+```text
+$ cd backend && /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/bin/python -m pytest tests/test_adapters_all.py -v
+collected 68 items
+tests/test_adapters_all.py ............................................. [ 66%]
+................sss....                                                  [100%]
+65 passed, 3 skipped
+```
+
+Instanciação de todas as ferramentas:
+
+```text
+$ python -c "from verificalab.stress.registry import ToolRegistry; r=ToolRegistry.load(); [print(t.id, r.adapter_for(t.id)) for t in r.all()]"
+mikumikubeam <verificalab.stress.adapters.mikumikubeam.MikuMikuBeamAdapter object at 0x7fc16c966ba0>
+ddoslayer <verificalab.stress.adapters.ddoslayer.DDoSlayerAdapter object at 0x7fc16c966ba0>
+slowloris <verificalab.stress.adapters.slowloris.SlowlorisAdapter object at 0x7fc16c966ba0>
+mhddos <verificalab.stress.adapters.mhddos.MHDDOSAdapter object at 0x7fc16c966ba0>
+impulse <verificalab.stress.adapters.impulse.ImpulseAdapter object at 0x7fc16c966ba0>
+pyddos <verificalab.stress.adapters.pyddos.PyDDoSAdapter object at 0x7fc16c966ba0>
+overload <verificalab.stress.adapters.overload.OverloadAdapter object at 0x7fc16c966ba0>
+ufonet <verificalab.stress.adapters.ufonet.UFONetAdapter object at 0x7fc16c966ba0>
+```
+
+Suíte global; o Python do sistema não tinha `textual`, então foi usado o
+interpretador já configurado no `.venv`:
+
+```text
+$ cd backend && /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/bin/python -m pytest tests -q
+......................................................................ss [ 31%]
+s....................................................................... [ 62%]
+........................................................................ [ 94%]
+.............                                                            [100%]
+=============================== warnings summary ===============================
+tests/test_api_data.py::test_log_upload_parse_and_correlation
+  StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+226 passed, 3 skipped, 1 warning
 ```
