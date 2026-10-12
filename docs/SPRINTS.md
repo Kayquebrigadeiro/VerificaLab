@@ -9,7 +9,7 @@
 | 4 | Adapter real Slowloris e teste E2E no laboratório local | Concluído | 9 testes do adapter, execução real em `127.0.0.1:8477` com `returncode=0` e suíte global com 152 testes |
 | 5 | TUI Textual: catálogo, descrições e execução no laboratório local | Concluído | 9 testes TUI, captura manual com 8 ferramentas e suíte global com 161 testes |
 | 6 | Adapters restantes (7 ferramentas) | Concluído com bloqueios explícitos | 65 testes de adapters passaram; 8 adapters instanciados; suíte global passou (evidências abaixo) |
-| 7 | Cobrir fluxos e limites com testes | Não iniciado | — |
+| 7 | Orchestrator, persistência SQLite e relatórios JSON/Markdown/HTML | Concluído | 23 testes focados; execução real Slowloris no lab local; suíte global: 249 passed, 3 skipped (evidências abaixo) |
 | 8 | Validar documentação e execução integrada | Não iniciado | — |
 
 ## Evidências do Sprint 1
@@ -392,4 +392,114 @@ s....................................................................... [ 62%]
 tests/test_api_data.py::test_log_upload_parse_and_correlation
   StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
 226 passed, 3 skipped, 1 warning
+```
+
+## Evidências do Sprint 7 — Orchestrator + relatórios
+
+Implementados `core/orchestrator.py` e `core/report.py`. O orchestrator
+recusa ferramentas fora do `ToolRegistry`, valida autorização antes de
+executar adapters, aplica os limites declarados no catálogo e continua após
+falha individual. Cada ferramenta gera registro `runs`, `check_results`,
+`artifacts` e log privado em `data/artifacts/<orchestrator_run_id>/<tool>.log`.
+Os relatórios JSON, Markdown e HTML são gerados em `data/exports/` ao final da
+execução, com redação de segredos e seção de limitações. O esquema SQLite
+existente não contém `stress_runs` nem `storage/models.py`: os campos
+`tool_id`, `target`, `ended_at`, `returncode`, `ok` e `orchestrator_id` foram
+adicionados por migração compatível à tabela `runs` existente.
+
+Testes focados:
+
+```text
+$ cd backend && ../.venv/bin/python -m pytest tests/test_orchestrator.py tests/test_report.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/backend
+configfile: pytest.ini
+plugins: anyio-4.15.1, platformdirs-4.13.0
+collected 23 items
+
+tests/test_orchestrator.py .............                                 [ 56%]
+tests/test_report.py ..........                                          [100%]
+
+============================== 23 passed in 0.44s ==============================
+```
+
+Execução ponta a ponta real contra o laboratório local (não usa mock do
+executor):
+
+```text
+$ cd backend && python -c "from verificalab.core.orchestrator import Orchestrator; o=Orchestrator(); s=o.run(o.plan('127.0.0.1:8477', ['slowloris'])); print(s)"
+RunSummary(run_id='stress_1a1315d1b774e5959629cf0f13f', target='127.0.0.1:8477', started_at=datetime.datetime(2026, 10, 12, 18, 25, 47, 895660, tzinfo=datetime.timezone.utc), ended_at=datetime.datetime(2026, 10, 12, 18, 25, 53, 340946, tzinfo=datetime.timezone.utc), executions=(ToolRunSummary(run_id='run_1a1315d1b778063131774e0af60', tool_id='slowloris', tool_name='Slowloris', target='127.0.0.1:8477', started_at=datetime.datetime(2026, 10, 12, 18, 25, 48, 62380, tzinfo=datetime.timezone.utc), ended_at=datetime.datetime(2026, 10, 12, 18, 25, 53, 179018, tzinfo=datetime.timezone.utc), returncode=0, ok=True, artifact_path='/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/data/artifacts/stress_1a1315d1b774e5959629cf0f13f/slowloris.log', error=None),), report_paths=(('json', '/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/data/exports/stress_1a1315d1b774e5959629cf0f13f.json'), ('markdown', '/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/data/exports/stress_1a1315d1b774e5959629cf0f13f.md'), ('html', '/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/data/exports/stress_1a1315d1b774e5959629cf0f13f.html')))
+```
+
+Verificação dos caminhos e relatórios gerados:
+
+```text
+$ ls -la data/artifacts/stress_1a1315d1b774e5959629cf0f13f/
+total 12
+drwx------ 2 grekas grekas 4096 out 12 15:25 .
+drwx------ 4 grekas grekas 4096 out 12 15:25 ..
+-rw------- 1 grekas grekas  208 out 12 15:25 slowloris.log
+
+$ ls -la data/exports/
+total 20
+drwx------ 2 grekas grekas 4096 out 12 15:25 .
+drwx------ 7 grekas grekas 4096 out 12 15:25 ..
+-rw------- 1 grekas grekas 1473 out 12 15:25 stress_1a1315d1b774e5959629cf0f13f.html
+-rw------- 1 grekas grekas 1110 out 12 15:25 stress_1a1315d1b774e5959629cf0f13f.json
+-rw------- 1 grekas grekas  686 out 12 15:25 stress_1a1315d1b774e5959629cf0f13f.md
+```
+
+Primeiras 30 linhas do HTML produzido:
+
+```html
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>VerificaLab — relatório stress_1a1315d1b774e5959629cf0f13f</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:70rem;margin:2rem auto;padding:0 1rem;color:#172033}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccd;padding:.5rem;text-align:left}
+th{background:#eef1f7}.status{font-weight:600}.limitations{background:#f5f7fa;padding:1rem}
+</style></head>
+<body><h1>Relatório VerificaLab</h1>
+<p class="status">Resultado: OK</p>
+<dl><dt>Execução</dt><dd>stress_1a1315d1b774e5959629cf0f13f</dd>
+<dt>Alvo</dt><dd>127.0.0.1:8477</dd>
+<dt>Início</dt><dd>2026-10-12T18:25:47.895660+00:00</dd>
+<dt>Fim</dt><dd>2026-10-12T18:25:53.340946+00:00</dd>
+<dt>Duração total</dt><dd>5.445286 s</dd></dl>
+<h2>Ferramentas executadas</h2>
+<table><thead><tr><th>Ferramenta</th><th>Resultado</th><th>Código</th><th>Duração (s)</th>
+</tr></thead><tbody><tr><td>Slowloris</td><td>OK</td><td>0</td><td>5.116638</td></tr></tbody></table>
+<section class="limitations"><h2>Limitações</h2><ul><li>Somente alvos loopback explícitos são suportados pelos adapters.</li><li>Não há amplificação de tráfego nem uso de proxies externos.</li><li>Cada ferramenta respeita os limites de duração e threads do catálogo.</li><li>Resultados descrevem somente o comportamento observado nesta execução.</li></ul></section>
+</body></html>
+```
+
+O HTML também foi aberto com Chromium headless e inspecionado visualmente:
+resultado `OK`, alvo loopback, linha Slowloris e limitações aparecem na página.
+A captura foi temporária e não integra o repositório.
+
+Suíte completa (`pytest.ini` já define `addopts = -q`; sem a opção extra,
+pytest fica em modo quieto duplo e omite a contagem final):
+
+```text
+$ cd backend && PATH=/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/bin:$PATH python -m pytest tests -q
+......................................................................ss [ 28%]
+s....................................................................... [ 57%]
+........................................................................ [ 85%]
+....................................                                     [100%]
+
+$ cd backend && PATH=/home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/bin:$PATH python -m pytest tests -q -o addopts=''
+......................................................................ss [ 28%]
+s....................................................................... [ 57%]
+........................................................................ [ 85%]
+....................................                                     [100%]
+=============================== warnings summary ===============================
+tests/test_api_data.py::test_log_upload_parse_and_correlation
+  /home/grekas/Projetos/VerificadordeSegurança/VerificaLab/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+249 passed, 3 skipped, 1 warning in 36.52s
 ```

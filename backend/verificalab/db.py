@@ -179,7 +179,17 @@ _SQL_PART2 = """
     );
 """
 
-MIGRATIONS: list[str] = [_SQL_PART1 + _SQL_PART2]
+_SQL_PART3 = """
+    ALTER TABLE runs ADD COLUMN tool_id TEXT;
+    ALTER TABLE runs ADD COLUMN target TEXT;
+    ALTER TABLE runs ADD COLUMN ended_at TEXT;
+    ALTER TABLE runs ADD COLUMN returncode INTEGER;
+    ALTER TABLE runs ADD COLUMN ok INTEGER CHECK(ok IN (0,1));
+    ALTER TABLE runs ADD COLUMN orchestrator_id TEXT;
+    CREATE INDEX IF NOT EXISTS idx_runs_orchestrator ON runs(orchestrator_id);
+"""
+
+MIGRATIONS: list[str] = [_SQL_PART1 + _SQL_PART2, _SQL_PART3]
 
 
 def utcnow() -> str:
