@@ -10,7 +10,7 @@
 | 5 | TUI Textual: catálogo, descrições e execução no laboratório local | DONE | 9 testes TUI, captura manual com 8 ferramentas e suíte global com 161 testes |
 | 6 | Adapters restantes (7 ferramentas) | DONE | 65 testes de adapters passaram; 8 adapters instanciados; suíte global passou (evidências abaixo) |
 | 7 | Orchestrator, persistência SQLite e relatórios JSON/Markdown/HTML | DONE | 23 testes focados; execução real Slowloris no lab local; suíte global: 249 passed, 3 skipped (evidências abaixo) |
-| 8 | Integração E2E e documentação | EM ANDAMENTO | Teste real e documentação escritos; aguardando suíte global, build frontend, lint, commit e evidências finais |
+| 8 | Integração E2E e documentação | DONE | E2E real: `1 passed in 5.37s`; suíte: `255 passed, 3 skipped`; build frontend e Chromium aprovados; processos `0/0/0`; grep sem correspondências; commit de implementação `9a6e056` |
 
 ## Evidências do Sprint 1
 
@@ -565,6 +565,5 @@ Build frontend: `✓ built in 1.24s`. Busca
 `grep -rn "shell=True" backend/verificalab/`: nenhuma correspondência
 (grep retornou 1, como esperado). O histórico contém commits dos Sprints 1–7;
 Chromium headless abriu o relatório exportado e confirmou ferramenta, alvo e
-duração com exit code 0. O commit de implementação e status final serão
-registrados na tabela acima
-após o fechamento do sprint.
+duração com exit code 0. Commit de implementação: `9a6e056`
+(`feat: end-to-end stress orchestration`).
